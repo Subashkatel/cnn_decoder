@@ -116,7 +116,7 @@ shots using Tesseract alone, BP+LSD alone, and neural pre-decoding plus BP+LSD.
 Results live under `.runtime/experiments/` in the printed run directory. The
 comparison includes measured GPU inference, transfers, and correction conversion
 in the neural pipeline time. It reports decoder setup separately. Searches have
-a 15-second deadline; timeouts count as failures and are listed separately.
+a 60-second deadline; timeouts count as failures and are listed separately.
 These batch measurements and small error counts do not establish a threshold,
 single-shot real-time latency, or a statistically significant decoding gain.
 If validation selects abstention, the report explicitly says the neural model

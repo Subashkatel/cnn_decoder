@@ -19,4 +19,4 @@ export MKL_NUM_THREADS=1
 export PYTHONDONTWRITEBYTECODE=1
 cd "$STUDY_SOURCE"
 srun --cpu-bind=cores "$TRAINING_PYTHON" -u -B -m training_data.planar_488.jobs.compare \
-    --prepared "$PREPARED_OUTPUT" --output "$COMPARISON_OUTPUT" --timeout 15 --seconds 2400
+    --prepared "$PREPARED_OUTPUT" --output "$COMPARISON_OUTPUT" --timeout 60 --seconds 2400

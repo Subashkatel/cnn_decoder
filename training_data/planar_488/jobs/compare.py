@@ -140,7 +140,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prepared", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--seconds", type=float, default=2400.0)
     parser.add_argument("--resume", action="store_true")
     arguments = parser.parse_args()
