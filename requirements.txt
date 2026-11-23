@@ -1,0 +1,7 @@
+# Runtime requirements for Python 3.11.
+# A separately installed torch 2.5.1 CUDA build also satisfies this requirement.
+numpy==2.4.6
+stim==1.16.0
+torch==2.5.1
+# Required by the optional Tesseract cleanup wheel.
+scipy==1.17.0
