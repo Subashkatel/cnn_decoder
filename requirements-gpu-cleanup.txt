@@ -1,5 +1,8 @@
 # Optional, separate environment for the NVIDIA GPU cleanup library.
 cudaq-qec-cu12==0.9.1
+cuda-quantum-cu12==0.17.0
+cuquantum-python-cu12==26.9.0
+cupy-cuda12x==13.6.0
 numpy==2.4.6
 scipy==1.17.0
 stim==1.16.0
