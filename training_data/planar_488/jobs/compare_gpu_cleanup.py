@@ -63,6 +63,19 @@ def validate_prepared(prepared):
             raise ValueError("GPU comparison requires the same physical and sampling settings")
 
 
+def select_neural_candidate(candidates, preset):
+    """Measure the best safe neural policy even when raw cleanup is recommended."""
+    neural = []
+    for candidate in candidates:
+        if candidate["preset"] != preset or candidate["policy"] == "abstain":
+            continue
+        if candidate["paired_changes"]["worsened"] == 0:
+            neural.append(candidate)
+    if not neural:
+        return None
+    return select_candidate(neural)
+
+
 def select_on_validation(prepared_directory, prepared, report, report_path, presets):
     """Reuse each GPU decoder for all policies of one physical case."""
     checkpoints = prepared["checkpoints"]
@@ -97,10 +110,10 @@ def select_on_validation(prepared_directory, prepared, report, report_path, pres
                         overhead[key] += case["policy_predecoder_seconds"][policy]
                     candidate_cases[key].append(measured)
             del cleanup
-        for (checkpoint, policy), cases in candidate_cases.items():
+        for (checkpoint_name, policy), cases in candidate_cases.items():
             candidate = {
-                "checkpoint": checkpoint, "policy": policy, "preset": preset,
-                "summary": summarize(cases, overhead[(checkpoint, policy)]),
+                "checkpoint": checkpoint_name, "policy": policy, "preset": preset,
+                "summary": summarize(cases, overhead[(checkpoint_name, policy)]),
                 "paired_changes": paired_changes(baseline, cases),
             }
             report["candidates"].append(candidate)
@@ -108,11 +121,12 @@ def select_on_validation(prepared_directory, prepared, report, report_path, pres
         write_report(report_path, report)
         print("Finished GPU validation:", preset, flush=True)
     report["selection"] = select_candidate(report["candidates"])
+    selected_preset = report["selection"]["preset"]
+    report["neural_selection"] = select_neural_candidate(report["candidates"], selected_preset)
     write_report(report_path, report)
 
 
-def evaluate_selected(prepared_directory, prepared, report):
-    selection = report["selection"]
+def evaluate_choice(prepared_directory, prepared, selection):
     checkpoint = next(item for item in prepared["checkpoints"] if item["name"] == selection["checkpoint"])
     original_cases = []
     corrected_cases = []
@@ -130,12 +144,15 @@ def evaluate_selected(prepared_directory, prepared, report):
             corrected_cases.append(corrected)
             overhead += case["policy_predecoder_seconds"][policy]
         del cleanup
-    report["test"] = {"baseline_cases": original_cases, "combined_cases": corrected_cases}
-    report["summary"] = {
+    summary = {
         "gpu_cleanup_alone": summarize(original_cases, 0.0),
         "neural_plus_gpu_cleanup": summarize(corrected_cases, overhead),
         "paired_changes": paired_changes(original_cases, corrected_cases),
         "neural_policy_abstains": selection["policy"] == "abstain",
+    }
+    return {
+        "selection": selection, "summary": summary,
+        "baseline_cases": original_cases, "combined_cases": corrected_cases,
     }
 
 
@@ -168,7 +185,13 @@ def main():
     report_path = arguments.output / "comparison.json"
     with recorded_attempt(report_path, report):
         select_on_validation(arguments.prepared, prepared, report, report_path, arguments.presets)
-        evaluate_selected(arguments.prepared, prepared, report)
+        selected = evaluate_choice(arguments.prepared, prepared, report["selection"])
+        report["test"] = selected
+        report["summary"] = selected["summary"]
+        if report["neural_selection"] is not None:
+            report["neural_comparison"] = evaluate_choice(
+                arguments.prepared, prepared, report["neural_selection"],
+            )
         report["status"] = "completed"
     print(json.dumps(report["summary"], indent=2), flush=True)
 

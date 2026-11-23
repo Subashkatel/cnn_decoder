@@ -9,6 +9,7 @@ import unittest
 from training_data.planar_488.comparison import paired_changes, select_candidate
 from training_data.planar_488.comparison import summarize_samples
 from training_data.paths import PROJECT_ROOT
+from training_data.planar_488.jobs.compare_gpu_cleanup import select_neural_candidate
 
 
 def case_samples(failures, seconds, timeouts=None):
@@ -24,6 +25,19 @@ def case_samples(failures, seconds, timeouts=None):
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_neural_comparison_is_available_when_deployment_abstains(self):
+        baseline = {
+            "preset": "gpu", "policy": "abstain", "paired_changes": {"worsened": 0},
+            "summary": {"failures": 0, "pipeline_seconds": 1.0},
+        }
+        neural = {
+            "preset": "gpu", "policy": "conservative", "paired_changes": {"worsened": 0},
+            "summary": {"failures": 0, "pipeline_seconds": 2.0},
+        }
+        self.assertEqual(select_candidate([baseline, neural])["policy"], "abstain")
+        selected = select_neural_candidate([baseline, neural], "gpu")
+        self.assertEqual(selected["policy"], "conservative")
+
     def test_worker_shutdown_is_bounded_when_parent_handles_sigterm(self):
         script = '''
 import signal

@@ -145,6 +145,8 @@ validation data, then evaluates the frozen choice on the same separate test
 cohort as the CPU comparison. Its report includes the standalone GPU decoder
 and neural pre-decoder plus GPU decoder, so an improvement from changing the
 backend is distinguished from an improvement from the neural model.
+It also measures the best neural policy that passed validation when the faster
+recommended setting bypasses the neural model.
 
 The second environment isolates CUDA-Q's CUDA dependencies from PyTorch's
 pinned training dependencies. Tesseract still runs on one CPU as the reference.

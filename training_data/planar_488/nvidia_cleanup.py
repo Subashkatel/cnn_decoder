@@ -62,9 +62,13 @@ class NvidiaCleanup:
         logical %= 2
         # The plugin's convergence flag describes BP, including when OSD repaired it.
         # A parity-valid OSD correction remains a valid cleanup result.
-        return CleanupPredictions(logical=logical.T.astype(bool), unreliable=~valid)
+        logical_columns = logical.T
+        logical_predictions = logical_columns.astype(bool)
+        return CleanupPredictions(logical=logical_predictions, unreliable=~valid)
 
     def decode_one(self, syndrome: np.ndarray) -> CleanupShot:
         detectors = np.asarray(syndrome)[None, :]
         decoded = self.decode(detectors)
-        return CleanupShot(logical=decoded.logical[0], unreliable=bool(decoded.unreliable[0]))
+        logical = decoded.logical[0]
+        unreliable = bool(decoded.unreliable[0])
+        return CleanupShot(logical=logical, unreliable=unreliable)
