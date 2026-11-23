@@ -5,11 +5,16 @@ import signal
 import subprocess
 import sys
 import unittest
+from unittest.mock import Mock
+
+import numpy as np
 
 from training_data.planar_488.comparison import paired_changes, select_candidate
 from training_data.planar_488.comparison import summarize_samples
 from training_data.paths import PROJECT_ROOT
 from training_data.planar_488.jobs.compare_gpu_cleanup import select_neural_candidate
+from training_data.planar_488.jobs.compare_gpu_cleanup import decode_batch
+from training_data.planar_488.cleanup_decoder import CleanupPredictions
 
 
 def case_samples(failures, seconds, timeouts=None):
@@ -25,6 +30,28 @@ def case_samples(failures, seconds, timeouts=None):
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_large_gpu_batches_preserve_shot_order_with_bounded_chunks(self):
+        values = np.arange(137) % 2
+        detectors = values[:, None]
+        expected = detectors.astype(bool)
+        expected[[65, 129]] ^= True
+
+        def decode_chunk(chunk):
+            self.assertLessEqual(len(chunk), 64)
+            logical = chunk.astype(bool)
+            unreliable = np.zeros(len(chunk), dtype=bool)
+            return CleanupPredictions(logical=logical, unreliable=unreliable)
+
+        cleanup = Mock()
+        cleanup.decode.side_effect = decode_chunk
+        result = decode_batch(cleanup, detectors, expected)
+        self.assertEqual(len(result["samples"]), 137)
+        failures = []
+        for index, sample in enumerate(result["samples"]):
+            if sample["failed"]:
+                failures.append(index)
+        self.assertEqual(failures, [65, 129])
+
     def test_neural_comparison_is_available_when_deployment_abstains(self):
         baseline = {
             "preset": "gpu", "policy": "abstain", "paired_changes": {"worsened": 0},

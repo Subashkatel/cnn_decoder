@@ -18,19 +18,26 @@ from training_data.reports import file_hash, recorded_attempt, write_report
 
 def decode_batch(cleanup, detectors, expected):
     """Measure warmed batch time, including transfers and parity verification."""
-    cleanup.decode(detectors)
+    chunk_size = 64
+    cleanup.decode(detectors[:chunk_size])
     cleanup.cuda.deviceSynchronize()
+    logical = np.empty_like(expected, dtype=bool)
+    unreliable = np.zeros(len(detectors), dtype=bool)
     started = time.perf_counter()
-    decoded = cleanup.decode(detectors)
+    for first_shot in range(0, len(detectors), chunk_size):
+        last_shot = min(first_shot + chunk_size, len(detectors))
+        decoded = cleanup.decode(detectors[first_shot:last_shot])
+        logical[first_shot:last_shot] = decoded.logical
+        unreliable[first_shot:last_shot] = decoded.unreliable
     cleanup.cuda.deviceSynchronize()
     seconds = time.perf_counter() - started
-    wrong = np.any(decoded.logical != expected, axis=1)
-    failed = wrong | decoded.unreliable
+    wrong = np.any(logical != expected, axis=1)
+    failed = wrong | unreliable
     samples = []
     for index in range(len(detectors)):
         samples.append({
             "failed": bool(failed[index]), "wrong_logical": bool(wrong[index]),
-            "unreliable": bool(decoded.unreliable[index]),
+            "unreliable": bool(unreliable[index]),
         })
     return {"decode_seconds": seconds, "samples": samples}
 

@@ -12,6 +12,7 @@ from training_data.planar_488.evaluation import correction_effect
 from training_data.planar_488.jobs.configuration import CASES, PilotConfiguration
 from training_data.planar_488.jobs.configuration import make_batch, read_training_report
 from training_data.planar_488.jobs.configuration import validate_tuning_seed
+from training_data.planar_488.jobs.configuration import validate_fresh_test_seed
 from training_data.planar_488.jobs.runtime import configure_precision, environment_record
 from training_data.planar_488.jobs.runtime import require_cuda_allocation
 from training_data.planar_488.learning import load_model_weights, predict_probabilities
@@ -60,6 +61,10 @@ def prepare_checkpoint(checkpoint, output, arguments, device):
     settings = training_report["configuration"]
     configuration = PilotConfiguration.from_record(settings)
     validate_tuning_seed(configuration, arguments.selection_seed)
+    test_seed = configuration.test_seed
+    if arguments.test_seed is not None:
+        test_seed = arguments.test_seed
+        validate_fresh_test_seed(configuration, test_seed, arguments.selection_seed)
     configure_precision(configuration.tf32)
     model = build_predecoder(configuration.distance, configuration.rounds, configuration.model_profile)
     weights = checkpoint / "best.pt"
@@ -71,11 +76,12 @@ def prepare_checkpoint(checkpoint, output, arguments, device):
         "configuration": settings,
         "checkpoint_sha256": file_hash(weights),
         "training_step": training_report["completed_steps"],
+        "evaluation_test_seed": test_seed,
         "validation": [], "test": [],
     }
     splits = (
         ("validation", arguments.validation_shots, arguments.selection_seed),
-        ("test", arguments.test_shots, configuration.test_seed),
+        ("test", arguments.test_shots, test_seed),
     )
     for split, shots, seed_base in splits:
         for case_index in range(len(CASES)):
@@ -95,6 +101,8 @@ def main():
     parser.add_argument("--validation-shots", type=int, default=8)
     parser.add_argument("--test-shots", type=int, default=64)
     parser.add_argument("--selection-seed", type=int, default=203011110000)
+    parser.add_argument("--test-seed", type=int,
+                        help="Use a fresh test stream, separate from training and validation")
     arguments = parser.parse_args()
     if min(arguments.validation_shots, arguments.test_shots, *arguments.steps) < 1:
         parser.error("Shot counts and checkpoint steps must be positive")

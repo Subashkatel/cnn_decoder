@@ -10,6 +10,7 @@ import numpy as np
 from training_data.planar_488.cleanup_decoder import decoder_identity
 from training_data.planar_488.generator import TRAINING_SCHEMA
 from training_data.planar_488.jobs.configuration import PilotConfiguration
+from training_data.planar_488.jobs.configuration import validate_fresh_test_seed
 from training_data.planar_488.jobs.evaluate import prepare_evaluation
 from training_data.planar_488.learning import save_checkpoint
 from training_data.planar_488.model import build_predecoder
@@ -27,6 +28,22 @@ def policy_summary(threshold, seconds, *, failures=0, timeouts=0, new_failures=0
 
 
 class PlanarTuningTests(unittest.TestCase):
+    def test_extended_test_stream_cannot_reuse_training_or_validation(self):
+        configuration = PilotConfiguration()
+        selection_seed = configuration.test_seed + 10000
+        forbidden = [
+            configuration.training_seed + 1,
+            configuration.validation_seed - 1,
+            configuration.calibration_seed,
+            configuration.test_seed,
+            selection_seed + 1,
+        ]
+        for seed in forbidden:
+            with self.subTest(seed=seed):
+                with self.assertRaises(ValueError):
+                    validate_fresh_test_seed(configuration, seed, selection_seed)
+        validate_fresh_test_seed(configuration, selection_seed + 10000, selection_seed)
+
     def test_timeout_is_unknown_not_a_claimed_logical_failure(self):
         decoded = {"status": "timeout", "seconds_lower_bound": 3}
         scored = score_decode(decoded, np.array([False]), 3)

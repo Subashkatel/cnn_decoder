@@ -102,6 +102,17 @@ def validate_tuning_seed(configuration, seed):
             raise ValueError("Cleanup validation overlaps training, calibration, or final test seeds")
 
 
+def validate_fresh_test_seed(configuration, seed, selection_seed):
+    """An extended test must use a stream unseen by all earlier selection stages."""
+    validate_tuning_seed(configuration, seed)
+    last_test_seed = seed + len(CASES) - 1
+    for validation_seed in (configuration.validation_seed, selection_seed):
+        last_validation_seed = validation_seed + len(CASES) - 1
+        overlaps = seed <= last_validation_seed and validation_seed <= last_test_seed
+        if overlaps:
+            raise ValueError("Fresh test samples overlap validation samples")
+
+
 def read_training_report(training_output: Path) -> dict:
     """Read a saved training report, rejecting one written for different labels."""
     report_path = training_output / TRAINING_REPORT_NAME
