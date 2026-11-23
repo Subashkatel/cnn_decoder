@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import importlib.metadata
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,22 @@ import sys
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def check_environment():
+    """Reject an incomplete install before reserving cluster resources."""
+    if sys.version_info[:2] != (3, 11):
+        raise RuntimeError("Activate the Python 3.11 .venv created by scripts/setup.sh")
+    version = importlib.metadata.version("torch")
+    if version.endswith("+cpu"):
+        raise RuntimeError("GPU training requires scripts/setup.sh --cuda")
+    for package in ("numpy", "stim", "scipy", "ldpc", "sinter", "pymatching"):
+        importlib.metadata.version(package)
+    subprocess.run(
+        [sys.executable, "-B", "-c",
+         "from training_data.planar_488.dependencies import load_tesseract; load_tesseract()"],
+        cwd=PROJECT_ROOT, check=True,
+    )
 
 
 def freeze_source(destination):
@@ -66,6 +83,7 @@ def main():
     arguments = parser.parse_args()
     if not 0 <= arguments.seed_base < 2 ** 64 - 500000:
         parser.error("Seed base must leave room for independent sample streams")
+    check_environment()
     output = arguments.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = output / "source"
@@ -91,13 +109,19 @@ def main():
     receipt["training_job"] = training_id
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
     print("GPU training submitted:", training_id, flush=True)
-    comparison_id = submit([
+    comparison_arguments = [
         "--dependency=afterok:" + training_id, "--kill-on-invalid-dep=yes",
         "--output=" + str(output / "comparison-%j.out"),
         "--error=" + str(output / "comparison-%j.err"),
         str(source / "scripts/compare_cleanup.sbatch"),
         str(source), str(prepared_output), str(comparison_output),
-    ], environment)
+    ]
+    try:
+        comparison_id = submit(comparison_arguments, environment)
+    except subprocess.CalledProcessError:
+        print("GPU training is already submitted as", training_id, file=sys.stderr)
+        print("Submit only the missing CPU comparison; keep the receipt:", receipt_path, file=sys.stderr)
+        raise
     receipt["comparison_job"] = comparison_id
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
     print("Dependent one-CPU comparison submitted:", comparison_id, flush=True)
