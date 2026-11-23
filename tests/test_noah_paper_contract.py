@@ -164,7 +164,7 @@ class NoahPaperContractTests(unittest.TestCase):
                 self.assertEqual(memory.num_ticks, expected_memory_moments)
 
     def test_cleanup_uses_the_published_tesseract_configuration(self):
-        record_path = NOAH_SOURCE_ROOT / "data" / "decoder_configs.json"
+        record_path = NOAH_SOURCE_ROOT / "decoder_configs.json"
         records_text = record_path.read_text()
         records = json.loads(records_text)
         published = records["tesseract_63fbe2f8fd7d7d6f"]

@@ -3,5 +3,7 @@
 numpy==2.4.6
 stim==1.16.0
 torch==2.5.1
-# Required by the optional Tesseract cleanup wheel.
 scipy==1.17.0
+ldpc==2.3.9
+sinter==1.15.0
+pymatching==2.3.1

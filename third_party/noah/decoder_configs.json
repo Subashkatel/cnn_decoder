@@ -1,0 +1,21 @@
+{
+  "tesseract_63fbe2f8fd7d7d6f": {
+    "beam": 20,
+    "beam_climbing": true,
+    "det_order_seed": 518278944,
+    "no_revisit_dets": true,
+    "order_sources": [
+      "bfs",
+      "coordinate",
+      "index"
+    ],
+    "orders_per_source": 21,
+    "pqlimit": 1000000,
+    "pqlimit_semantics": "cumulative pushes per order/beam trial; fails when count > limit",
+    "repository": "https://github.com/quantumlib/tesseract-decoder",
+    "selection": "minimum cost over all successful trials; stop publication on any low-confidence shot",
+    "source_commit": "024db1d3b5b038f565c476dd1b51885271f7b0bf",
+    "sparsify_errors": false,
+    "total_orders": 63
+  }
+}

@@ -1,4 +1,4 @@
-"""Project locations and the boundary to the retained upstream snapshots."""
+"""Project locations and the bundled upstream source boundary."""
 
 from pathlib import Path
 import sys
@@ -9,8 +9,9 @@ _resolved_module_path = _module_path.resolve()
 PACKAGE_ROOT = _resolved_module_path.parent
 PROJECT_ROOT = _resolved_module_path.parents[1]
 EXAMPLES_ROOT = PROJECT_ROOT / ".runtime" / "examples"
-NVIDIA_SOURCE_ROOT = PROJECT_ROOT / "Ising-Decoding"
-NOAH_SOURCE_ROOT = PROJECT_ROOT / "denser_planar_color_codes_source_v1"
+THIRD_PARTY_ROOT = PROJECT_ROOT / "third_party"
+NVIDIA_SOURCE_ROOT = THIRD_PARTY_ROOT / "nvidia"
+NOAH_SOURCE_ROOT = THIRD_PARTY_ROOT / "noah"
 
 
 def add_source_directory(directory: Path) -> None:

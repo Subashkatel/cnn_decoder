@@ -14,6 +14,10 @@ ROOT_SOURCE_FILES = {
 }
 SOURCE_DIRECTORIES = {"training_data", "tests", "scripts", "verification"}
 SOURCE_EXTENSIONS = {".py", ".md", ".sh", ".sbatch"}
+UPSTREAM_CONFIGURATION = {
+    "third_party/noah/decoder_configs.json",
+    "third_party/noah/src/vendor/_triangle488/reference/templates.json",
+}
 
 
 def git_lines(*arguments):
@@ -28,6 +32,12 @@ def is_public_source(name):
     if name in ROOT_SOURCE_FILES:
         return True
     path = Path(name)
+    if path.parts[0] == "third_party":
+        if name in UPSTREAM_CONFIGURATION:
+            return True
+        if path.name in {"LICENSE", "NOTICE"}:
+            return True
+        return path.suffix in {".py", ".md", ".toml"}
     if path.parts[0] not in SOURCE_DIRECTORIES:
         return False
     return path.suffix in SOURCE_EXTENSIONS

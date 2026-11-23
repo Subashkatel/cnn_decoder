@@ -1,0 +1,133 @@
+# Required upstream source, copied byte-for-byte with original notices.
+[noah]
+bundle = "denser_planar_color_codes_source_v1"
+paper = "https://arxiv.org/abs/2609.21376"
+
+[nvidia]
+repository = "https://github.com/NVIDIA/Ising-Decoding"
+revision = "ea7c1bb3b823fc6a38472d0d95974b6d01932288"
+
+[[files]]
+path = "noah/src/denser_codes.py"
+original_path = "src/denser_codes.py"
+sha256 = "c7f8fd452bf8c8b386abd829325476397f898914b2def09c5e9021ab733c1a94"
+
+[[files]]
+path = "noah/src/vendor/_coordinates.py"
+original_path = "src/vendor/_coordinates.py"
+sha256 = "fb4e85ca4b1971b5d4ac56b8242048c596cf3cf9c3c68185b04cbcdc25cb2ec1"
+
+[[files]]
+path = "noah/src/vendor/_native_lowering.py"
+original_path = "src/vendor/_native_lowering.py"
+sha256 = "f6f50496c24887042369980d38ae67c76caca54133ee47546458f4821d814448"
+
+[[files]]
+path = "noah/LICENSE"
+original_path = "LICENSE"
+sha256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+
+[[files]]
+path = "noah/NOTICE.md"
+original_path = "NOTICE.md"
+sha256 = "491ff4a702ceb889263abc3476aec4b62eaec80bdec0846fe9881c89d1a5c42b"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/__init__.py"
+original_path = "src/vendor/_triangle488/__init__.py"
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/candidate.py"
+original_path = "src/vendor/_triangle488/candidate.py"
+sha256 = "aac0c20645466ace014fe575ec221244cc7cc3ed3e7bb89c339c707838a0d0f3"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/gate_sets.py"
+original_path = "src/vendor/_triangle488/gate_sets.py"
+sha256 = "d14115a00140699098cb8d2e401891091a1f96f5632a91821b88afcdc56980a5"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/geometry.py"
+original_path = "src/vendor/_triangle488/geometry.py"
+sha256 = "ece92c51a82d426500a8a556068a4da37e152f603fa8c973ce87ca249477fa9d"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/memory.py"
+original_path = "src/vendor/_triangle488/memory.py"
+sha256 = "89b827b36359c6a5b9a9aa1bf173455e680282c0bfb6d16c28195077d14315a3"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/native.py"
+original_path = "src/vendor/_triangle488/native.py"
+sha256 = "b25651e14dd6bc2165d58b3fd3fce37c0fb522f1e68e6d6fab342e25793f5d33"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/reference/__init__.py"
+original_path = "src/vendor/_triangle488/reference/__init__.py"
+sha256 = "d24dfc13398208f07696dc1f68b774d122b5d6218415c33b0df4aa32a63bfc33"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/reference/binary.py"
+original_path = "src/vendor/_triangle488/reference/binary.py"
+sha256 = "df3646f5e19866a33a9fb00c5aca8d2e21b768d500d8d386d9355950a4b5e652"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/reference/cx_rule.py"
+original_path = "src/vendor/_triangle488/reference/cx_rule.py"
+sha256 = "326e1ee8c6aaa0930ce009ec492b05a4d38b238096af103b35461624a6a6e447"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/reference/ideal_css.py"
+original_path = "src/vendor/_triangle488/reference/ideal_css.py"
+sha256 = "4e5456189292969aa53d27d5d303828fe950a53a977c16a2dc98270bd6f4ad25"
+
+[[files]]
+path = "noah/src/vendor/_triangle488/reference/templates.json"
+original_path = "src/vendor/_triangle488/reference/templates.json"
+sha256 = "c28643edb30bd8df8166cafa93a271a88064d6b49461a3d8dacc2dc106ea370d"
+
+[[files]]
+path = "noah/decoder_configs.json"
+original_path = "data/decoder_configs.json"
+sha256 = "13668b671192457697c4a93f93093b157604d2de3e85c09ba66648168e7dc1ac"
+
+[[files]]
+path = "nvidia/LICENSE"
+original_path = "LICENSE"
+sha256 = "d07c0367e2861e7fe70fa1b679f879f4fa2f9138ade4457d44ecf8b2e135bb45"
+
+[[files]]
+path = "nvidia/NOTICE"
+original_path = "NOTICE"
+sha256 = "c01695d212826df9bdc69a8257a53872d1c4ad3adeadfb01d58d10e609161854"
+
+[[files]]
+path = "nvidia/code/model/__init__.py"
+original_path = "code/model/__init__.py"
+sha256 = "dc1394bb9a3021b13f33d054e0a764a75b02bb319b5b94bec3aced300d93837c"
+
+[[files]]
+path = "nvidia/code/model/factory.py"
+original_path = "code/model/factory.py"
+sha256 = "cd4ad86c5a07e2e6c438bf9341921812e4f642864da77ce24c89aca819054aec"
+
+[[files]]
+path = "nvidia/code/model/predecoder.py"
+original_path = "code/model/predecoder.py"
+sha256 = "f44f2a0720a346a026d1203c9b17497df93703dd0faf37d2a4cbc87ce85557d0"
+
+[[files]]
+path = "nvidia/code/training/__init__.py"
+original_path = "code/training/__init__.py"
+sha256 = "82dc1055cab1a71f714497561fd34e67d1ac3384a4fca42a74bed883e511365b"
+
+[[files]]
+path = "nvidia/code/training/distributed.py"
+original_path = "code/training/distributed.py"
+sha256 = "3500a1ebdbbc8df2c3b68d1bd1eef63e09400f7ab7a1508fe9b20ec3a564f4f4"
+
+[[files]]
+path = "nvidia/code/training/optimizers.py"
+original_path = "code/training/optimizers.py"
+sha256 = "54f127186b039a265a73997f292aded20ed267a0c85392ac683b99062a7cb733"

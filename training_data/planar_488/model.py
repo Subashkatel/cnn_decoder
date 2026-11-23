@@ -47,6 +47,12 @@ MODEL_PROFILES = {
         activation="gelu",
         dropout=.01,
     ),
+    "compact": ModelProfile(
+        filters=(32, 32, 32, HEAD_COUNT),
+        kernels=(3, 3, 3, 3),
+        activation="gelu",
+        dropout=.01,
+    ),
 }
 
 

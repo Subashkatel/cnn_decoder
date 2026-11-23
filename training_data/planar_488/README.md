@@ -30,8 +30,9 @@ This is an adaptation, not a reproduction of NVIDIA's complete training recipe.
 `jobs/configuration.py` owns the run settings and the training report that both
 jobs read. `jobs/runtime.py` owns allocation checks, provenance, and
 signal/time handling. `jobs/check_gpu.py` is the short CUDA check.
-`dependencies.py` loads Noah's circuit builder, NVIDIA's model, and the
-compatible project-local Tesseract package.
+`dependencies.py` loads the bundled Noah circuit builder and NVIDIA model from
+`third_party/`, and the compatible project-local Tesseract package. BP+LSD uses
+`bp_cleanup.py`; both backends retain every native flag detector.
 `training_data/reports.py` owns atomic JSON publication and content hashes.
 
 ## Frames, labels, and the opening reference
@@ -206,8 +207,9 @@ need not be bit-identical to his runs. Residual probabilities are not learned
 or reweighted. A small pilot cannot establish decoding improvement or
 threshold behavior.
 
-NVIDIA's paper uses Chromobius. This adaptation uses Tesseract for the native
-flagged detector model; compatibility with stock Chromobius is not provided.
+NVIDIA's paper uses Chromobius. This adaptation supports Tesseract and BP+LSD
+for the native flagged detector model. Select BP+LSD with `--cleanup bp_lsd`
+when evaluating or tuning. Compatibility with stock Chromobius is not provided.
 
 For short CUDA and pipeline verification:
 

@@ -9,7 +9,7 @@ import time
 import numpy as np
 import torch
 
-from training_data.planar_488.cleanup_decoder import CleanupPredictions, TesseractCleanup
+from training_data.planar_488.cleanup_decoder import CleanupPredictions, build_cleanup
 from training_data.planar_488.cleanup_decoder import decoder_identity, logical_failures
 from training_data.planar_488.evaluation import classification_counts, correction_effect
 from training_data.planar_488.evaluation import count_true, detector_event_counts
@@ -215,6 +215,7 @@ class EvaluationSession:
     threshold: Threshold
     output: Path
     report: dict
+    cleanup_name: str = "tesseract"
 
     @property
     def report_path(self) -> Path:
@@ -235,7 +236,7 @@ def evaluate_case(session: EvaluationSession, case_index: int, budget: RunBudget
     predecoder_seconds = time.monotonic() - inference_started
     original_detectors = batch.trajectory.detector_events
     residual_detectors = original_detectors ^ effect.detectors
-    cleanup = TesseractCleanup(batch.circuit)
+    cleanup = build_cleanup(batch.circuit, session.cleanup_name)
     name = f"test_{batch.basis}_phase{batch.start_phase}.npz"
     samples_path = session.output / name
     progress = load_case_progress(samples_path, batch)
@@ -322,7 +323,8 @@ def evaluation_summary(cases, threshold):
 
 
 def prepare_evaluation(training_output: Path, output: Path, resume: bool,
-                       policy_path: Path | None = None) -> EvaluationSession:
+                       policy_path: Path | None = None,
+                       cleanup_name="tesseract") -> EvaluationSession:
     """Load a selected model and reject incompatible evaluation resumes."""
     training_report = read_training_report(training_output)
     if training_report.get("status") != "trained":
@@ -356,7 +358,7 @@ def prepare_evaluation(training_output: Path, output: Path, resume: bool,
         test_end = configuration.test_seed + len(CASES) - 1
         if policy["seed"] <= test_end and configuration.test_seed <= validation_end:
             raise ValueError("Correction policy used the final test seed range")
-    cleanup_identity = decoder_identity()
+    cleanup_identity = decoder_identity(cleanup_name)
     if policy is not None and policy["decoder"] != cleanup_identity:
         raise ValueError("Correction policy used different cleanup decoder settings")
     experiment = {
@@ -394,13 +396,14 @@ def prepare_evaluation(training_output: Path, output: Path, resume: bool,
         threshold=threshold,
         output=output,
         report=report,
+        cleanup_name=cleanup_name,
     )
 
 
 def run_evaluation(training_output: Path, output: Path, seconds: float, resume=False,
-                   *, policy_path: Path | None = None) -> bool:
+                   *, policy_path: Path | None = None, cleanup_name="tesseract") -> bool:
     """Evaluate on CPU and return whether all planned paired shots completed."""
-    session = prepare_evaluation(training_output, output, resume, policy_path)
+    session = prepare_evaluation(training_output, output, resume, policy_path, cleanup_name)
     budget = RunBudget(seconds)
     with recorded_attempt(session.report_path, session.report), budget.handle_signals():
         session.report["environment"] = environment_record()
@@ -432,6 +435,7 @@ def main(argv=None):
     parser.add_argument("--evaluation-seconds", type=int, default=1500)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--policy", type=Path)
+    parser.add_argument("--cleanup", choices=("tesseract", "bp_lsd"), default="tesseract")
     arguments = parser.parse_args(argv)
     require_cpu_allocation()
     if arguments.evaluation_seconds < 1:
@@ -442,6 +446,7 @@ def main(argv=None):
         arguments.evaluation_seconds,
         arguments.resume,
         policy_path=arguments.policy,
+        cleanup_name=arguments.cleanup,
     )
     if not completed:
         raise SystemExit(STOPPED_EARLY_EXIT_CODE)

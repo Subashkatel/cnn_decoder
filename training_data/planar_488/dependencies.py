@@ -1,4 +1,4 @@
-"""Load upstream code: Noah's circuit builder, NVIDIA's model, and the project-local Tesseract."""
+"""Load bundled circuit and model sources and the installed cleanup decoder."""
 
 from functools import lru_cache
 import importlib
@@ -16,19 +16,19 @@ TESSERACT_ROOT = PROJECT_ROOT / ".runtime" / "tesseract"
 
 
 def load_noah_builder():
-    """Return Noah's unchanged denser_codes module from the retained source snapshot."""
+    """Return Noah's unchanged circuit builder from this checkout."""
     add_source_directory(NOAH_SOURCE_DIRECTORY)
     return importlib.import_module("denser_codes")
 
 
 def load_nvidia_module(name: str):
-    """Return one unchanged module, such as "qec.precompute_dem", from NVIDIA's snapshot."""
+    """Return a bundled NVIDIA module, such as model.predecoder or training.optimizers."""
     add_source_directory(NVIDIA_SOURCE_DIRECTORY)
     return importlib.import_module(name)
 
 
 def load_nvidia_predecoder():
-    """Return NVIDIA's configurable Conv3D pre-decoder class from the retained snapshot."""
+    """Return NVIDIA's configurable Conv3D pre-decoder class from this checkout."""
     predecoder_module = load_nvidia_module("model.predecoder")
     return predecoder_module.PreDecoderModelMemory_v1
 

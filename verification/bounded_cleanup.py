@@ -5,12 +5,12 @@ import multiprocessing
 import time
 
 
-from training_data.planar_488.cleanup_decoder import TesseractCleanup
+from training_data.planar_488.cleanup_decoder import build_cleanup
 
 
-def decode_worker(connection, circuit):
+def decode_worker(connection, circuit, decoder_name):
     """Keep the C++ search in a process that can be stopped at a hard deadline."""
-    cleanup = TesseractCleanup(circuit)
+    cleanup = build_cleanup(circuit, decoder_name)
     connection.send({"ready": True})
     while True:
         syndrome = connection.recv()
@@ -19,24 +19,26 @@ def decode_worker(connection, circuit):
         started = time.perf_counter()
         prediction = cleanup.decode_one(syndrome)
         elapsed = time.perf_counter() - started
-        error_indices = list(cleanup.decoder.predicted_errors_buffer)
-        witness_cost = cleanup.decoder.cost_from_errors(error_indices)
-        connection.send({
+        result = {
             "status": "completed",
             "seconds": elapsed,
             "logical": prediction.logical.tolist(),
             "unreliable": bool(prediction.unreliable),
-            "witness_errors": len(error_indices),
-            "witness_cost": witness_cost,
-        })
+        }
+        if decoder_name == "tesseract":
+            error_indices = list(cleanup.decoder.predicted_errors_buffer)
+            result["witness_errors"] = len(error_indices)
+            result["witness_cost"] = cleanup.decoder.cost_from_errors(error_indices)
+        connection.send(result)
 
 
 class BoundedCleanup:
     """Use one CPU sequentially; restart only after a timed-out search."""
 
-    def __init__(self, circuit, timeout):
+    def __init__(self, circuit, timeout, decoder_name="tesseract"):
         self.circuit = circuit
         self.timeout = timeout
+        self.decoder_name = decoder_name
         self.process = None
         self.connection = None
 
@@ -53,7 +55,7 @@ class BoundedCleanup:
         context = multiprocessing.get_context("fork")
         parent_connection, child_connection = context.Pipe()
         self.connection = parent_connection
-        arguments = (child_connection, self.circuit)
+        arguments = (child_connection, self.circuit, self.decoder_name)
         self.process = context.Process(target=decode_worker, args=arguments)
         self.process.start()
         child_connection.close()

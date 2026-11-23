@@ -2,50 +2,49 @@
 
 Training-data generation and a neural pre-decoder for native 4.8.8 color-code
 memories. The pipeline is detector inputs, local neural corrections, residual
-detectors, then Tesseract cleanup. This is a research adaptation of NVIDIA's
+detectors, then Tesseract or BP+LSD cleanup. This is a research adaptation of NVIDIA's
 pre-decoder; a decoding improvement has not been established.
 
 ## Setup
 
-Use Python 3.11. From the repository root:
+Use Linux with Python 3.11. For GPU training on Della:
 
 ```bash
-python3.11 -m venv .venv
+git clone https://github.com/Subashkatel/cnn_decoder.git
+cd cnn_decoder
+bash scripts/setup.sh --cuda
 source .venv/bin/activate
-python -m pip install -r requirements.txt
 ```
 
-Install the original source dependencies locally:
+The required Noah circuit builder and NVIDIA model and optimizer sources are
+included in [`third_party/`](third_party/README.md), with original licenses and
+file fingerprints. No original ZIP, separate source download, saved dataset,
+or access to the original workspace is required.
+
+Setup creates an isolated environment, installs the CUDA 12.4 build of PyTorch,
+the pinned Python dependencies, and the compatible Tesseract wheel. It imports
+the bundled sources without running a GPU workload. Set
+`SETUP_PYTHON=/path/to/python3.11` when Python 3.11 is outside your PATH.
+
+Submit the small GPU check:
 
 ```bash
-git clone https://github.com/NVIDIA/Ising-Decoding.git Ising-Decoding
-git -C Ising-Decoding checkout --detach ea7c1bb3b823fc6a38472d0d95974b6d01932288
+sbatch scripts/smoke_test.sbatch
 ```
 
-Obtain Noah's source bundle from the
-[paper's release record](https://doi.org/10.5281/zenodo.22820614) and extract it
-locally with this layout:
+It exports a tiny dataset, performs two real GPU optimizer steps, saves and
+reloads the checkpoint, and checks residual decoding with both backends.
+Outputs stay under `.runtime/smoke/`. This checks installation and execution;
+it does not establish a decoding improvement.
 
-```text
-denser_planar_color_codes_source_v1/
-  src/denser_codes.py
-  src/vendor/
-  data/decoder_configs.json
-```
-
-The source directories and downloaded archives are ignored by Git. Only the
-adapter code is maintained here. Generated reports identify the installed Noah
-source by a source-tree fingerprint, so an original ZIP is not required at
-runtime.
-
-For the Linux cleanup decoder and decoder-dependent tests:
+For a Linux machine where you explicitly want a CPU demonstration instead:
 
 ```bash
-bash scripts/setup_tesseract.sh
+bash scripts/setup.sh --cpu
 ```
 
-The script uses the active Python interpreter. Set `TRAINING_PYTHON` to an
-interpreter path to use a different environment.
+This runs the same tiny check on the CPU. The provided classical cleanup
+implementations use one CPU. GPU training on Della runs only inside Slurm.
 
 ## Generate data
 
@@ -62,6 +61,7 @@ Use `python -m training_data noah-training --help` for the available options.
 ## Code and tests
 
 - `training_data/`: detector handling, data generation, model, and training jobs.
+- `third_party/`: the required upstream source, configuration, and licenses.
 - `tests/`: contracts checked against Stim and deterministic injected faults.
 - `scripts/`: setup and Della Slurm launchers.
 - `verification/`: reusable policy selection, runtime analysis, and benchmarking tools.
@@ -97,6 +97,7 @@ This submits GPU training followed by dependent CPU cleanup evaluation. The
 scripts use the submission directory and active Python environment. They leave
 QoS and CUDA device assignment to Slurm. See the planar guide for model profiles,
 checkpoint continuation, and evaluation. Do not run GPU training on a login node.
+Evaluation and threshold tuning accept `--cleanup bp_lsd` to use BP+LSD.
 
 Keep datasets, checkpoints, downloaded bundles, job logs, experiment reports,
 and machine-specific settings local. Work on separate branches and use pull

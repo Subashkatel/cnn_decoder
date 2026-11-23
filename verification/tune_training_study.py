@@ -124,7 +124,7 @@ def evaluate_validation_case(configuration, case_index, model, arguments):
         "original_face_events": int(original[:, face_columns].sum()),
         "baseline": [], "thresholds": {},
     }
-    cleanup = BoundedCleanup(batch.circuit, arguments.timeout)
+    cleanup = BoundedCleanup(batch.circuit, arguments.timeout, arguments.cleanup)
     try:
         for syndrome, expected in zip(original, truth):
             decoded = cleanup.decode(syndrome)
@@ -159,6 +159,7 @@ def main():
     parser.add_argument("--shots", type=int, default=8)
     parser.add_argument("--seed", type=int, default=20261125000000)
     parser.add_argument("--timeout", type=float, default=3)
+    parser.add_argument("--cleanup", choices=("tesseract", "bp_lsd"), default="tesseract")
     threshold_arguments = parser.add_mutually_exclusive_group()
     threshold_arguments.add_argument("--thresholds", type=float, nargs="+",
                                      default=[.5, .7, .8, .9, .95, .99, 1.0])
@@ -191,7 +192,8 @@ def main():
         "status": "running", "purpose": "Bounded cleanup validation, not a final latency or LER claim",
         "configuration": asdict(configuration), "checkpoint_sha256": file_hash(checkpoint),
         "training_output": str(arguments.training_output), "host": socket.gethostname(),
-        "decoder": decoder_identity(), "seed": arguments.seed, "shots_per_case": arguments.shots,
+        "decoder": decoder_identity(arguments.cleanup), "seed": arguments.seed,
+        "shots_per_case": arguments.shots,
         "timeout_seconds": arguments.timeout, "cases": [],
         "threshold_values": arguments.thresholds,
     }

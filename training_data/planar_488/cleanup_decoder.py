@@ -9,7 +9,7 @@ from training_data.planar_488.dependencies import load_tesseract
 
 
 # Noah's published search, recorded in
-# denser_planar_color_codes_source_v1/data/decoder_configs.json.
+# third_party/noah/decoder_configs.json.
 # Lists keep this record identical after a JSON round trip, which evaluation resumes compare.
 PUBLISHED_CONFIGURATION = {
     "beam": 20,
@@ -23,11 +23,28 @@ PUBLISHED_CONFIGURATION = {
 }
 
 
-def decoder_identity() -> dict:
+def decoder_identity(name="tesseract") -> dict:
     """Name the decoder, its installed version, and its search settings for reports."""
+    if name == "bp_lsd":
+        from training_data.planar_488.bp_cleanup import decoder_identity as bp_identity
+
+        return bp_identity()
+    if name != "tesseract":
+        raise ValueError("Cleanup decoder must be tesseract or bp_lsd")
     load_tesseract()
     version = importlib.metadata.version("tesseract-decoder")
     return {"name": "tesseract", "version": version, **PUBLISHED_CONFIGURATION}
+
+
+def build_cleanup(circuit, name="tesseract"):
+    """Choose a cleanup backend without changing detector or logical conventions."""
+    if name == "bp_lsd":
+        from training_data.planar_488.bp_cleanup import BpLsdCleanup
+
+        return BpLsdCleanup(circuit)
+    if name == "tesseract":
+        return TesseractCleanup(circuit)
+    raise ValueError("Cleanup decoder must be tesseract or bp_lsd")
 
 
 def detector_orders(utils, dem) -> list[list[int]]:

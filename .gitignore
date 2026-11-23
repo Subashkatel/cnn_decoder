@@ -35,6 +35,8 @@ __pycache__/
 *.err
 *.log
 *.partial
+!/third_party/noah/decoder_configs.json
+!/third_party/noah/src/vendor/_triangle488/reference/templates.json
 AGENTS.md
 CLAUDE.md
 agent-state.json
