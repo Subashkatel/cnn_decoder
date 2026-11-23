@@ -5,29 +5,14 @@ import json
 from pathlib import Path
 
 import numpy as np
-import stim
 
 from training_data.planar_488.cleanup_decoder import decoder_identity
 from training_data.planar_488.comparison import decode_shots, paired_changes
 from training_data.planar_488.comparison import select_candidate, summarize_samples
+from training_data.planar_488.comparison import read_prepared_case as read_case
 from training_data.planar_488.jobs.runtime import RunBudget, environment_record
 from training_data.planar_488.jobs.runtime import require_cpu_allocation
 from training_data.reports import file_hash, recorded_attempt, write_report
-
-
-def read_case(prepared_directory, checkpoint, case):
-    """Bind every comparison to the exact circuit and GPU-prepared arrays."""
-    directory = prepared_directory / checkpoint["name"]
-    circuit_path = directory / case["circuit"]
-    arrays_path = directory / case["arrays"]
-    if file_hash(circuit_path) != case["circuit_sha256"]:
-        raise ValueError("Prepared circuit changed after GPU inference")
-    if file_hash(arrays_path) != case["arrays_sha256"]:
-        raise ValueError("Prepared detector arrays changed after GPU inference")
-    circuit = stim.Circuit(circuit_path.read_text())
-    with np.load(arrays_path, allow_pickle=False) as saved:
-        arrays = {name: saved[name] for name in saved.files}
-    return circuit, arrays
 
 
 def baseline_cases(prepared, checkpoint, split, decoder, arguments, budget):

@@ -13,9 +13,15 @@ import torch
 from training_data.planar_488.jobs.check_gpu import verify_checkpoint
 from training_data.planar_488.jobs.runtime import compare_results, require_cuda_allocation
 from training_data.planar_488.model import build_predecoder
+from training_data.planar_488.nvidia_cleanup import NvidiaCleanup
 
 
 class GpuValidationTests(unittest.TestCase):
+    def test_gpu_cleanup_rejects_missing_allocation_before_optional_imports(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, "Slurm GPU allocation"):
+                NvidiaCleanup(None)
+
     def test_no_slurm_allocation_is_rejected_before_cuda_probe(self):
         with patch.dict(os.environ, {}, clear=True):
             with patch("torch.cuda.is_available") as available:

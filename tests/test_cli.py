@@ -11,6 +11,20 @@ from training_data.paths import PROJECT_ROOT
 
 
 class CommandTests(unittest.TestCase):
+    def test_gpu_cleanup_help_does_not_import_optional_gpu_libraries(self):
+        script = (
+            "import runpy, sys; "
+            "sys.modules['cupy'] = None; sys.modules['cudaq_qec'] = None; "
+            "sys.argv = ['compare_gpu_cleanup', '--help']; "
+            "runpy.run_module('training_data.planar_488.jobs.compare_gpu_cleanup', run_name='__main__')"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-B", "-c", script], cwd=PROJECT_ROOT,
+            capture_output=True, text=True, timeout=30,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn("usage:", completed.stdout)
+
     def run_command(self, arguments, block_torch=False):
         environment = dict(os.environ)
         environment["PYTHONDONTWRITEBYTECODE"] = "1"

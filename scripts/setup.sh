@@ -7,8 +7,14 @@ cd -- "$SCRIPT_DIRECTORY/.."
 SETUP_PYTHON="${SETUP_PYTHON:-python3.11}"
 MODE="${1:---cuda}"
 case "$MODE" in
-    --cpu) TORCH_INDEX="https://download.pytorch.org/whl/cpu" ;;
-    --cuda) TORCH_INDEX="https://download.pytorch.org/whl/cu124" ;;
+    --cpu)
+        TORCH_INDEX="https://download.pytorch.org/whl/cpu"
+        TORCH_REQUIREMENT="torch==2.5.1+cpu"
+        ;;
+    --cuda)
+        TORCH_INDEX="https://download.pytorch.org/whl/cu124"
+        TORCH_REQUIREMENT="torch==2.5.1+cu124"
+        ;;
     *) echo "Usage: bash scripts/setup.sh [--cpu|--cuda]" >&2; exit 2 ;;
 esac
 
@@ -16,7 +22,7 @@ esac
 "$SETUP_PYTHON" -m venv .venv
 PYTHON="$(pwd)/.venv/bin/python"
 "$PYTHON" -m pip install --disable-pip-version-check \
-    --index-url "$TORCH_INDEX" torch==2.5.1
+    --index-url "$TORCH_INDEX" "$TORCH_REQUIREMENT"
 "$PYTHON" -m pip install --disable-pip-version-check -r requirements.txt
 TRAINING_PYTHON="$PYTHON" bash scripts/setup_tesseract.sh
 "$PYTHON" -m pip check

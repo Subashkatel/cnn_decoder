@@ -2,7 +2,8 @@
 
 Training-data generation and a neural pre-decoder for native 4.8.8 color-code
 memories. The pipeline is detector inputs, local neural corrections, residual
-detectors, then Tesseract or BP+LSD cleanup. This is a research adaptation of NVIDIA's
+detectors, then classical cleanup. Tesseract, CPU BP+LSD, and optional NVIDIA GPU
+cleanup are available. This is a research adaptation of NVIDIA's
 pre-decoder; a decoding improvement has not been established.
 
 ## Setup
@@ -121,6 +122,32 @@ These batch measurements and small error counts do not establish a threshold,
 single-shot real-time latency, or a statistically significant decoding gain.
 If validation selects abstention, the report explicitly says the neural model
 is bypassed. The loop does not continue submitting jobs indefinitely.
+
+## Optional GPU cleanup
+
+To use NVIDIA's GPU Relay-BP or BP with GPU JOBS post-processing instead of CPU
+BP+LSD, install its separate environment:
+
+```bash
+bash scripts/setup_gpu_cleanup.sh
+```
+
+After the training job has written the run's `prepared/prepared.json`, submit:
+
+```bash
+sbatch scripts/compare_gpu_cleanup.sbatch \
+    .runtime/experiments/RUN/prepared .runtime/experiments/RUN/gpu_comparison
+```
+
+Replace `RUN` with the directory printed by the training-loop command. This
+job selects a checkpoint, correction policy, and GPU decoder preset using
+validation data, then evaluates the frozen choice on the same separate test
+cohort as the CPU comparison. Its report includes the standalone GPU decoder
+and neural pre-decoder plus GPU decoder, so an improvement from changing the
+backend is distinguished from an improvement from the neural model.
+
+The second environment isolates CUDA-Q's CUDA dependencies from PyTorch's
+pinned training dependencies. Tesseract still runs on one CPU as the reference.
 
 Keep datasets, checkpoints, downloaded bundles, job logs, experiment reports,
 and machine-specific settings local. Work on separate branches and use pull

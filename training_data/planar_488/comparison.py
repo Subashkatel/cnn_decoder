@@ -3,9 +3,11 @@
 import time
 
 import numpy as np
+import stim
 
 from training_data.planar_488.evaluation import wilson_interval
 from training_data.planar_488.bounded_cleanup import BoundedCleanup
+from training_data.reports import file_hash
 
 
 CORRECTION_POLICIES = {
@@ -19,6 +21,22 @@ CORRECTION_POLICIES = {
     "spatial_099_temporal_090": {"spatial": .99, "temporal": .9},
     "spatial_099_temporal_095": {"spatial": .99, "temporal": .95},
 }
+
+
+def read_prepared_case(prepared_directory, checkpoint, case):
+    """Load the exact circuit and residual arrays produced by GPU inference."""
+    directory = prepared_directory / checkpoint["name"]
+    circuit_path = directory / case["circuit"]
+    arrays_path = directory / case["arrays"]
+    if file_hash(circuit_path) != case["circuit_sha256"]:
+        raise ValueError("Prepared circuit changed after GPU inference")
+    if file_hash(arrays_path) != case["arrays_sha256"]:
+        raise ValueError("Prepared detector arrays changed after GPU inference")
+    circuit_text = circuit_path.read_text()
+    circuit = stim.Circuit(circuit_text)
+    with np.load(arrays_path, allow_pickle=False) as saved:
+        arrays = {name: saved[name] for name in saved.files}
+    return circuit, arrays
 
 
 def decode_shots(circuit, detectors, expected_logical, decoder_name, timeout, budget):

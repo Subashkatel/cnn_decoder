@@ -1,0 +1,177 @@
+"""Select GPU cleanup and neural policy on validation, then decode separate test shots."""
+
+import argparse
+import importlib.metadata
+import json
+import os
+from pathlib import Path
+import time
+
+import numpy as np
+
+from training_data.planar_488.comparison import paired_changes, read_prepared_case
+from training_data.planar_488.comparison import select_candidate
+from training_data.planar_488.evaluation import wilson_interval
+from training_data.planar_488.nvidia_cleanup import NvidiaCleanup, PRESETS
+from training_data.reports import file_hash, recorded_attempt, write_report
+
+
+def decode_batch(cleanup, detectors, expected):
+    """Measure warmed batch time, including transfers and parity verification."""
+    cleanup.decode(detectors)
+    cleanup.cuda.deviceSynchronize()
+    started = time.perf_counter()
+    decoded = cleanup.decode(detectors)
+    cleanup.cuda.deviceSynchronize()
+    seconds = time.perf_counter() - started
+    wrong = np.any(decoded.logical != expected, axis=1)
+    failed = wrong | decoded.unreliable
+    samples = []
+    for index in range(len(detectors)):
+        samples.append({
+            "failed": bool(failed[index]), "wrong_logical": bool(wrong[index]),
+            "unreliable": bool(decoded.unreliable[index]),
+        })
+    return {"decode_seconds": seconds, "samples": samples}
+
+
+def summarize(cases, overhead):
+    samples = []
+    seconds = 0.0
+    for case in cases:
+        samples.extend(case["samples"])
+        seconds += case["decode_seconds"]
+    shots = len(samples)
+    failures = sum(sample["failed"] for sample in samples)
+    wrong = sum(sample["wrong_logical"] for sample in samples)
+    unreliable = sum(sample["unreliable"] for sample in samples)
+    interval = wilson_interval(failures, shots)
+    return {
+        "shots": shots, "failures": failures, "wrong_logical": wrong,
+        "unreliable": unreliable, "block_failure_rate": failures / shots,
+        "failure_interval_95": interval, "cleanup_seconds": seconds,
+        "predecoder_seconds": overhead, "pipeline_seconds": seconds + overhead,
+        "amortized_seconds_per_shot": (seconds + overhead) / shots,
+    }
+
+
+def validate_prepared(prepared):
+    """A shared physical cohort is required when ranking different checkpoints."""
+    reference = prepared["checkpoints"][0]["configuration"]
+    for checkpoint in prepared["checkpoints"]:
+        if checkpoint["configuration"] != reference:
+            raise ValueError("GPU comparison requires the same physical and sampling settings")
+
+
+def select_on_validation(prepared_directory, prepared, report, report_path, presets):
+    """Reuse each GPU decoder for all policies of one physical case."""
+    checkpoints = prepared["checkpoints"]
+    for preset in presets:
+        baseline = []
+        candidate_cases = {}
+        overhead = {}
+        for checkpoint in checkpoints:
+            for policy in prepared["policies"]:
+                key = (checkpoint["name"], policy)
+                candidate_cases[key] = []
+                overhead[key] = 0.0
+        for case_index, reference in enumerate(checkpoints[0]["validation"]):
+            circuit, arrays = read_prepared_case(prepared_directory, checkpoints[0], reference)
+            cleanup = NvidiaCleanup(circuit, preset, batch_size=64)
+            raw = decode_batch(cleanup, arrays["original_detectors"], arrays["original_logical"])
+            baseline.append(raw)
+            for checkpoint in checkpoints:
+                case = checkpoint["validation"][case_index]
+                _, candidate_arrays = read_prepared_case(prepared_directory, checkpoint, case)
+                np.testing.assert_array_equal(candidate_arrays["original_detectors"], arrays["original_detectors"])
+                np.testing.assert_array_equal(candidate_arrays["original_logical"], arrays["original_logical"])
+                for policy in prepared["policies"]:
+                    key = (checkpoint["name"], policy)
+                    if policy == "abstain":
+                        measured = raw
+                    else:
+                        measured = decode_batch(
+                            cleanup, candidate_arrays["detectors__" + policy],
+                            candidate_arrays["logical__" + policy],
+                        )
+                        overhead[key] += case["policy_predecoder_seconds"][policy]
+                    candidate_cases[key].append(measured)
+            del cleanup
+        for (checkpoint, policy), cases in candidate_cases.items():
+            candidate = {
+                "checkpoint": checkpoint, "policy": policy, "preset": preset,
+                "summary": summarize(cases, overhead[(checkpoint, policy)]),
+                "paired_changes": paired_changes(baseline, cases),
+            }
+            report["candidates"].append(candidate)
+        report["validation_baselines"][preset] = summarize(baseline, 0.0)
+        write_report(report_path, report)
+        print("Finished GPU validation:", preset, flush=True)
+    report["selection"] = select_candidate(report["candidates"])
+    write_report(report_path, report)
+
+
+def evaluate_selected(prepared_directory, prepared, report):
+    selection = report["selection"]
+    checkpoint = next(item for item in prepared["checkpoints"] if item["name"] == selection["checkpoint"])
+    original_cases = []
+    corrected_cases = []
+    overhead = 0.0
+    for case in checkpoint["test"]:
+        circuit, arrays = read_prepared_case(prepared_directory, checkpoint, case)
+        cleanup = NvidiaCleanup(circuit, selection["preset"], batch_size=64)
+        original = decode_batch(cleanup, arrays["original_detectors"], arrays["original_logical"])
+        original_cases.append(original)
+        if selection["policy"] == "abstain":
+            corrected_cases.append(original)
+        else:
+            policy = selection["policy"]
+            corrected = decode_batch(cleanup, arrays["detectors__" + policy], arrays["logical__" + policy])
+            corrected_cases.append(corrected)
+            overhead += case["policy_predecoder_seconds"][policy]
+        del cleanup
+    report["test"] = {"baseline_cases": original_cases, "combined_cases": corrected_cases}
+    report["summary"] = {
+        "gpu_cleanup_alone": summarize(original_cases, 0.0),
+        "neural_plus_gpu_cleanup": summarize(corrected_cases, overhead),
+        "paired_changes": paired_changes(original_cases, corrected_cases),
+        "neural_policy_abstains": selection["policy"] == "abstain",
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prepared", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--presets", choices=PRESETS, nargs="+", default=list(PRESETS))
+    arguments = parser.parse_args()
+    if not os.environ.get("SLURM_JOB_ID"):
+        raise RuntimeError("Submit GPU cleanup through Slurm")
+    import cupy
+
+    prepared_path = arguments.prepared / "prepared.json"
+    prepared_text = prepared_path.read_text()
+    prepared = json.loads(prepared_text)
+    if prepared["status"] != "prepared":
+        raise ValueError("GPU neural preparation must complete before cleanup")
+    validate_prepared(prepared)
+    arguments.output.mkdir(parents=True, exist_ok=False)
+    properties = cupy.cuda.runtime.getDeviceProperties(0)
+    report = {
+        "status": "validating", "prepared_sha256": file_hash(prepared_path),
+        "job_id": os.environ["SLURM_JOB_ID"], "gpu": properties["name"].decode(),
+        "decoder_version": importlib.metadata.version("cudaq-qec-cu12"),
+        "candidates": [], "validation_baselines": {},
+        "timing_scope": "Warmed batched GPU decoding including transfers and parity checks; neural times are the actual cached GPU inference and correction conversion times. Excludes decoder setup and simulated data generation.",
+        "statistical_scope": "Checkpoint, policy, and GPU preset chosen on validation. Final test shots are separate. Small-sample results do not establish a threshold or single-shot real-time latency.",
+    }
+    report_path = arguments.output / "comparison.json"
+    with recorded_attempt(report_path, report):
+        select_on_validation(arguments.prepared, prepared, report, report_path, arguments.presets)
+        evaluate_selected(arguments.prepared, prepared, report)
+        report["status"] = "completed"
+    print(json.dumps(report["summary"], indent=2), flush=True)
+
+
+if __name__ == "__main__":
+    main()

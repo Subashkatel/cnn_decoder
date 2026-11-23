@@ -9,7 +9,8 @@ from training_data.paths import PROJECT_ROOT
 
 
 ROOT_SOURCE_FILES = {
-    ".gitignore", ".gitattributes", "README.md", "requirements.txt", "detector_playground.ipynb",
+    ".gitignore", ".gitattributes", "README.md", "requirements.txt",
+    "requirements-gpu-cleanup.txt", "detector_playground.ipynb",
     "LICENSE", "NOTICE", "CONTRIBUTING.md",
 }
 SOURCE_DIRECTORIES = {"training_data", "tests", "scripts", "verification"}
