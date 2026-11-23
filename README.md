@@ -22,6 +22,14 @@ included in [`third_party/`](third_party/README.md), with original licenses and
 file fingerprints. No original ZIP, separate source download, saved dataset,
 or access to the original workspace is required.
 
+Noah's source defines the native 4.8.8 circuit, noise channels, and measurement
+record maps. Our adapter uses Stim to propagate the sampled faults through that
+circuit and builds the per-round correction targets and model tensors. NVIDIA's
+configurable neural model and optimizer consume those tensors. The 6.6.6 data
+generator and pretrained weights cannot be substituted directly: the geometry,
+flag inputs, frame bookkeeping, and correction mapping differ. See the
+[planar guide](training_data/planar_488/README.md) for the conventions and checks.
+
 Setup creates an isolated environment, installs the CUDA 12.4 build of PyTorch,
 the pinned Python dependencies, and the compatible Tesseract wheel. It imports
 the bundled sources without running a GPU workload. Set
@@ -131,6 +139,15 @@ BP+LSD, install its separate environment:
 ```bash
 bash scripts/setup_gpu_cleanup.sh
 ```
+
+Submit training, the CPU reference, and GPU cleanup together with:
+
+```bash
+python scripts/submit_training_loop.py --gpu-cleanup
+```
+
+For later GPU-only experiments, add `--skip-cpu-reference` to avoid reserving a
+CPU reference job. Each GPU job still requests one CPU for data handling.
 
 After the training job has written the run's `prepared/prepared.json`, submit:
 

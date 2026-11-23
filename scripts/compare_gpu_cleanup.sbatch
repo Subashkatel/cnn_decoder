@@ -19,5 +19,8 @@ export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 GPU_CLEANUP_PYTHON="${GPU_CLEANUP_PYTHON:-$PWD/.venv-gpu-cleanup/bin/python}"
+if [ -n "${PLANAR_SOURCE_DIRECTORY:-}" ]; then
+    cd "$PLANAR_SOURCE_DIRECTORY"
+fi
 srun --cpu-bind=cores "$GPU_CLEANUP_PYTHON" -u -B -m training_data.planar_488.jobs.compare_gpu_cleanup \
     --prepared "$PREPARED_OUTPUT" --output "$COMPARISON_OUTPUT" "$@"

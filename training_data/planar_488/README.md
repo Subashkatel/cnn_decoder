@@ -131,7 +131,9 @@ The NumPy/Stim notebook can inspect these without Torch.
 ## Train and evaluate in separate jobs
 
 The pipeline is native 4.8.8 detectors, neural pre-decoder, residual detectors,
-then Tesseract, the decoder behind every result in Noah's paper.
+then the selected cleanup decoder. The pilot launcher below uses Tesseract.
+The compact comparison loop also supports BP+LSD and optional NVIDIA GPU
+cleanup; see the [project setup guide](../../README.md#gpu-training-on-della).
 
 ```bash
 python scripts/submit_planar_pilot.py

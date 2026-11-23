@@ -1,4 +1,4 @@
-"""Freeze source, then submit compact GPU training and dependent CPU comparison."""
+"""Freeze source, then submit GPU training and the selected cleanup comparisons."""
 
 import argparse
 from datetime import datetime, timezone
@@ -80,10 +80,29 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=PROJECT_ROOT / ".runtime/experiments" / timestamp)
     parser.add_argument("--seed-base", type=int, default=secrets.randbits(40))
+    parser.add_argument("--gpu-cleanup", action="store_true",
+                        help="Also submit the optional NVIDIA GPU cleanup comparison")
+    parser.add_argument("--skip-cpu-reference", action="store_true",
+                        help="Use GPU cleanup without submitting the CPU reference job")
     arguments = parser.parse_args()
     if not 0 <= arguments.seed_base < 2 ** 64 - 500000:
         parser.error("Seed base must leave room for independent sample streams")
+    if arguments.skip_cpu_reference and not arguments.gpu_cleanup:
+        parser.error("Skipping the CPU reference requires --gpu-cleanup")
     check_environment()
+    gpu_python = None
+    if arguments.gpu_cleanup:
+        default_gpu_python = PROJECT_ROOT / ".venv-gpu-cleanup/bin/python"
+        gpu_python_setting = os.environ.get("GPU_CLEANUP_PYTHON", str(default_gpu_python))
+        gpu_python_path = Path(gpu_python_setting).expanduser().absolute()
+        if not gpu_python_path.is_file():
+            parser.error("Run bash scripts/setup_gpu_cleanup.sh before selecting GPU cleanup")
+        gpu_python = str(gpu_python_path)
+        package_check = "import importlib.metadata; importlib.metadata.version('cudaq-qec-cu12')"
+        subprocess.run(
+            [gpu_python, "-c", package_check],
+            check=True,
+        )
     output = arguments.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = output / "source"
@@ -116,15 +135,32 @@ def main():
         str(source / "scripts/compare_cleanup.sbatch"),
         str(source), str(prepared_output), str(comparison_output),
     ]
-    try:
-        comparison_id = submit(comparison_arguments, environment)
-    except subprocess.CalledProcessError:
-        print("GPU training is already submitted as", training_id, file=sys.stderr)
-        print("Submit only the missing CPU comparison; keep the receipt:", receipt_path, file=sys.stderr)
-        raise
-    receipt["comparison_job"] = comparison_id
-    receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
-    print("Dependent one-CPU comparison submitted:", comparison_id, flush=True)
+    if not arguments.skip_cpu_reference:
+        try:
+            comparison_id = submit(comparison_arguments, environment)
+        except subprocess.CalledProcessError:
+            print("GPU training is already submitted as", training_id, file=sys.stderr)
+            print("Submit only the missing CPU comparison; keep the receipt:", receipt_path, file=sys.stderr)
+            raise
+        receipt["comparison_job"] = comparison_id
+        receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        print("Dependent one-CPU comparison submitted:", comparison_id, flush=True)
+    if arguments.gpu_cleanup:
+        gpu_environment = dict(environment)
+        gpu_environment["GPU_CLEANUP_PYTHON"] = gpu_python
+        gpu_environment["PLANAR_SOURCE_DIRECTORY"] = str(source)
+        gpu_output = output / "gpu_comparison"
+        gpu_id = submit([
+            "--dependency=afterok:" + training_id, "--kill-on-invalid-dep=yes",
+            "--output=" + str(output / "gpu-cleanup-%j.out"),
+            "--error=" + str(output / "gpu-cleanup-%j.err"),
+            str(source / "scripts/compare_gpu_cleanup.sbatch"),
+            str(prepared_output), str(gpu_output), "--presets", "bp10-minllr-jobs",
+        ], gpu_environment)
+        receipt["gpu_cleanup_job"] = gpu_id
+        receipt["gpu_comparison_output"] = str(gpu_output)
+        receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
+        print("Dependent GPU cleanup comparison submitted:", gpu_id, flush=True)
     print("Run directory:", output, flush=True)
 
 
