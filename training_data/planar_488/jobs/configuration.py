@@ -86,6 +86,22 @@ def make_batch(configuration: PilotConfiguration, case_index: int, shots: int, s
     )
 
 
+def validate_tuning_seed(configuration, seed):
+    """Keep policy-selection samples separate from training, calibration, and test."""
+    last_seed = seed + len(CASES) - 1
+    if not 0 <= seed <= last_seed < SEED_LIMIT:
+        raise ValueError("Validation seed range must fit unsigned 64-bit integers")
+    excluded = (
+        (configuration.training_seed + 1, configuration.training_seed + configuration.steps),
+        (configuration.calibration_seed, configuration.calibration_seed + len(CASES) - 1),
+        (configuration.test_seed, configuration.test_seed + len(CASES) - 1),
+    )
+    for first_excluded, last_excluded in excluded:
+        overlaps = seed <= last_excluded and first_excluded <= last_seed
+        if overlaps:
+            raise ValueError("Cleanup validation overlaps training, calibration, or final test seeds")
+
+
 def read_training_report(training_output: Path) -> dict:
     """Read a saved training report, rejecting one written for different labels."""
     report_path = training_output / TRAINING_REPORT_NAME

@@ -22,28 +22,13 @@ from training_data.planar_488.cleanup_decoder import decoder_identity
 from training_data.planar_488.evaluation import correction_effect
 from training_data.planar_488.jobs.configuration import CASES, PilotConfiguration
 from training_data.planar_488.jobs.configuration import make_batch, read_training_report
+from training_data.planar_488.jobs.configuration import validate_tuning_seed
 from training_data.planar_488.jobs.runtime import require_cpu_allocation
 from training_data.planar_488.learning import load_model_weights, predict_probabilities
 from training_data.planar_488.model import build_predecoder
 from training_data.planar_488.policy import abstains, threshold_groups, threshold_key
 from training_data.reports import file_hash, write_report
-from verification.bounded_cleanup import BoundedCleanup
-
-
-def validate_tuning_seed(configuration, seed):
-    """Training and final-test samples must never enter correction-policy selection."""
-    last_seed = seed + len(CASES) - 1
-    if not 0 <= seed <= last_seed < 2 ** 64:
-        raise ValueError("Validation seed range must fit unsigned 64-bit integers")
-    excluded = (
-        (configuration.training_seed + 1, configuration.training_seed + configuration.steps),
-        (configuration.calibration_seed, configuration.calibration_seed + len(CASES) - 1),
-        (configuration.test_seed, configuration.test_seed + len(CASES) - 1),
-    )
-    for first_excluded, last_excluded in excluded:
-        overlaps = seed <= last_excluded and first_excluded <= last_seed
-        if overlaps:
-            raise ValueError("Cleanup validation overlaps training, calibration, or final test seeds")
+from training_data.planar_488.bounded_cleanup import BoundedCleanup
 
 
 def score_decode(decoded, expected, timeout):

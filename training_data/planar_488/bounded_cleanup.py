@@ -1,4 +1,4 @@
-"""Reusable native cleanup with a hard per-search deadline."""
+"""Classical cleanup with a hard per-search deadline."""
 
 
 import multiprocessing

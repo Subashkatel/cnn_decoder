@@ -99,6 +99,29 @@ QoS and CUDA device assignment to Slurm. See the planar guide for model profiles
 checkpoint continuation, and evaluation. Do not run GPU training on a login node.
 Evaluation and threshold tuning accept `--cleanup bp_lsd` to use BP+LSD.
 
+For the compact-model training and decoder comparison loop:
+
+```bash
+python scripts/submit_training_loop.py
+```
+
+This freezes a source snapshot and submits two jobs: up to 45 minutes for GPU
+training and inference, followed by up to 45 minutes on one CPU for classical
+decoding. It trains a compact distance-7, seven-round model at training noise
+`p=0.003` and evaluates at `p=0.001`. Checkpoints at 4,000, 8,000, and 12,000
+steps are screened using 32 validation shots across both bases and phases.
+The frozen checkpoint and thresholds are then compared on 256 separate test
+shots using Tesseract alone, BP+LSD alone, and neural pre-decoding plus BP+LSD.
+
+Results live under `.runtime/experiments/` in the printed run directory. The
+comparison includes measured GPU inference, transfers, and correction conversion
+in the neural pipeline time. It reports decoder setup separately. Searches have
+a 15-second deadline; timeouts count as failures and are listed separately.
+These batch measurements and small error counts do not establish a threshold,
+single-shot real-time latency, or a statistically significant decoding gain.
+If validation selects abstention, the report explicitly says the neural model
+is bypassed. The loop does not continue submitting jobs indefinitely.
+
 Keep datasets, checkpoints, downloaded bundles, job logs, experiment reports,
 and machine-specific settings local. Work on separate branches and use pull
 requests for source changes. After a public-history reset, use a fresh clone
