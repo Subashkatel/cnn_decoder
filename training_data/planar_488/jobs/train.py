@@ -23,7 +23,7 @@ from training_data.planar_488.jobs.runtime import require_cuda_allocation
 from training_data.planar_488.learning import estimate_head_priors
 from training_data.planar_488.learning import load_checkpoint, probability_loss
 from training_data.planar_488.learning import save_checkpoint, train_one_step
-from training_data.planar_488.model import build_predecoder, geometry_coverage
+from training_data.planar_488.model import MODEL_PROFILES, build_predecoder, geometry_coverage
 from training_data.planar_488.model import initialize_output_bias
 from training_data.planar_488.optimization import build_optimizer, learning_rate_for_step
 from training_data.planar_488.optimization import set_learning_rate, training_probability
@@ -445,7 +445,7 @@ def main(argv=None) -> None:
     parser.add_argument("--calibration-seed", type=int, default=defaults.calibration_seed)
     parser.add_argument("--test-seed", type=int, default=defaults.test_seed)
     parser.add_argument("--torch-seed", type=int, default=defaults.torch_seed)
-    parser.add_argument("--model-profile", choices=("inspection", "planar_pilot", "paper_cnn1"),
+    parser.add_argument("--model-profile", choices=tuple(MODEL_PROFILES),
                         default=defaults.model_profile)
     parser.add_argument("--probability", type=float, default=defaults.probability)
     parser.add_argument("--training-probability", type=float, default=defaults.training_probability)

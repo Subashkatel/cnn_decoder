@@ -24,7 +24,7 @@ from training_data.planar_488.jobs.configuration import CASES, PilotConfiguratio
 from training_data.planar_488.jobs.evaluate import run_evaluation
 from training_data.planar_488.jobs.train import run_pilot
 from training_data.planar_488.learning import load_checkpoint, save_checkpoint, train_one_step
-from training_data.planar_488.model import build_predecoder, geometry_coverage
+from training_data.planar_488.model import MODEL_PROFILES, build_predecoder, geometry_coverage
 from training_data.planar_488.tensors import build_layout
 from training_data.planar_488.validation import choose_threshold
 
@@ -214,6 +214,15 @@ class CleanupAndCheckpointTests(unittest.TestCase):
         self.assertEqual(configuration.calibration_seed, 20261118000000)
         self.assertEqual(configuration.test_seed, 20261119000000)
         self.assertEqual(configuration.torch_seed, 20261116)
+
+    def test_training_command_accepts_every_supported_model_profile(self):
+        for profile in MODEL_PROFILES:
+            with self.subTest(profile=profile):
+                arguments = ["--output", "/tmp/planar488_profile_check", "--model-profile", profile]
+                with patch.object(train_job, "run_pilot", return_value=True) as train:
+                    train_job.main(arguments)
+                configuration = train.call_args.args[0]
+                self.assertEqual(configuration.model_profile, profile)
 
     def test_training_and_validation_seed_ranges_cannot_overlap(self):
         with self.assertRaisesRegex(ValueError, "overlap"):
