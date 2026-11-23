@@ -1,9 +1,14 @@
 """Policy selection protects logical outcomes and includes neural overhead."""
 
+import os
+import signal
+import subprocess
+import sys
 import unittest
 
 from training_data.planar_488.comparison import paired_changes, select_candidate
 from training_data.planar_488.comparison import summarize_samples
+from training_data.paths import PROJECT_ROOT
 
 
 def case_samples(failures, seconds, timeouts=None):
@@ -19,6 +24,31 @@ def case_samples(failures, seconds, timeouts=None):
 
 
 class ComparisonTests(unittest.TestCase):
+    def test_worker_shutdown_is_bounded_when_parent_handles_sigterm(self):
+        script = '''
+import signal
+import stim
+from training_data.planar_488.bounded_cleanup import BoundedCleanup
+
+signal.signal(signal.SIGTERM, lambda signum, frame: None)
+circuit = stim.Circuit("R 0\\nM 0\\nDETECTOR rec[-1]")
+cleanup = BoundedCleanup(circuit, 2, "bp_lsd")
+cleanup.start()
+cleanup.close()
+'''
+        process = subprocess.Popen(
+            [sys.executable, "-B", "-c", script], cwd=PROJECT_ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            start_new_session=True,
+        )
+        try:
+            _, stderr = process.communicate(timeout=30)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            self.fail("Decoder worker shutdown hung under the parent's SIGTERM handler")
+        self.assertEqual(process.returncode, 0, stderr)
+
     def test_fast_policy_cannot_hide_a_new_logical_failure(self):
         baseline = {
             "policy": "abstain", "paired_changes": {"worsened": 0},

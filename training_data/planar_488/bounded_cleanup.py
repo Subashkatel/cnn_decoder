@@ -2,6 +2,7 @@
 
 
 import multiprocessing
+import signal
 import time
 
 
@@ -10,6 +11,8 @@ from training_data.planar_488.cleanup_decoder import build_cleanup
 
 def decode_worker(connection, circuit, decoder_name):
     """Keep the C++ search in a process that can be stopped at a hard deadline."""
+    # The parent handles Slurm stop requests; terminate must still stop this child.
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
     cleanup = build_cleanup(circuit, decoder_name)
     connection.send({"ready": True})
     while True:
@@ -47,7 +50,10 @@ class BoundedCleanup:
             return
         if self.process.is_alive():
             self.process.terminate()
-        self.process.join()
+        self.process.join(timeout=1)
+        if self.process.is_alive():
+            self.process.kill()
+            self.process.join(timeout=1)
         self.connection.close()
         self.process = None
 
